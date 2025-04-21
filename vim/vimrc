@@ -1,0 +1,139 @@
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""" The vim-plug autoload settings """"""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Use VIM defaults instead of VI compatibility
+set nocompatible
+
+" Auto install of vim-plug - only for the first time
+if empty(glob('~/.vim/autoload/plug.vim'))
+  silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs -sS https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+  silent !vim -e -u ~/.vimrc -i NONE -c "PlugInstall" -c "qa"
+endif
+
+" My choice of vim-plug plugins
+call plug#begin()
+  Plug 'tpope/vim-sensible'
+  Plug 'tpope/vim-endwise'
+  Plug 'ervandew/supertab'
+  Plug 'Townk/vim-autoclose'
+  Plug 'frazrepo/vim-rainbow'
+  Plug 'preservim/vim-indent-guides'
+  Plug 'tomasiser/vim-code-dark'
+  Plug 'joshdick/onedark.vim'
+  Plug 'itchyny/lightline.vim'
+  Plug 'itchyny/vim-gitbranch'
+  Plug 'preservim/nerdtree'
+  Plug 'mbbill/undotree'
+  Plug 'voldikss/vim-floaterm'
+call plug#end()
+
+" Automatically install missing plugins on startup - after the first time if any new
+autocmd VimEnter *
+  \  if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
+  \|   PlugInstall --sync | q
+  \| endif
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""" All vim-plug plugins settings below this """"""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" Theme - vim-code-dark
+set t_Co=256
+set t_ut=
+let g:codedark_modern=1         " new dark modern colors
+let g:codedark_italics=1        " comments lines in italic font
+set background=dark             " default background is dark
+silent! colorscheme codedark
+
+" Status Bar - 'lightline' and 'vim-gitbranch'
+set laststatus=2 noshowmode
+let g:lightline = {
+  \ 'colorscheme': 'one',
+  \ 'active': {
+  \   'left': [ [ 'mode', 'paste' ],
+  \             [ 'gitbranch', 'readonly', 'filename', 'modified' ] ]
+  \ },
+  \ 'component_function': {
+  \   'gitbranch': 'gitbranch#name',
+  \   'filename': 'FilenameForLightline'
+  \ },
+  \ }
+" Show fullpath in 'lightline' status bar
+function! FilenameForLightline()
+  return expand('%')
+endfunction
+
+" Filesystem Explorer - Nerdtree
+nnoremap <C-n> :NERDTreeToggle<CR>
+let NERDTreeQuitOnOpen=1
+" Change current working directory based on root directory in NERDTree
+let NERDTreeChDirMode=2
+" Exit Vim if NERDTree is the only window remaining in the only tab.
+autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | call feedkeys(":quit\<CR>:\<BS>") | endif
+" Close the tab if NERDTree is the only window remaining in it.
+autocmd BufEnter * if winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | call feedkeys(":quit\<CR>:\<BS>") | endif
+
+" Rainbow Parentheses - vim-rainbow
+let g:rainbow_active = 1
+
+" Visualizes the undo history - Undotree
+nnoremap <C-b> :UndotreeToggle<CR>
+set undolevels=1000
+set history=1000
+if has('persistent_undo')
+    set undodir=$HOME/.vim/undo
+    set undofile
+endif
+
+" Floating terminal - vim-floaterm
+let g:floaterm_keymap_toggle='<C-`>'
+let g:floaterm_keymap_kill='<C-d>'
+let g:floaterm_width = 0.9
+let g:floaterm_height = 0.9
+let g:floaterm_title = '--- Terminal ---'
+
+" Indent guides - vim-indent-guides
+let g:indent_guides_start_level=2
+let g:indent_guides_guide_size=1
+nnoremap <C-i> :IndentGuidesToggle<CR>
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"""""""""""" All vim-plug plugins settings above this """"""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" Cursor Line and Scrolloff
+set cursorline
+set scrolloff=2 sidescrolloff=2 display+=lastline
+
+" Line Numbers and Relativenumber - Toggle with Ctrl+l
+set number relativenumber
+nnoremap <C-l> :set number! relativenumber!<CR>
+
+" Better Backsppace
+set backspace=indent,eol,start
+
+" Rendering Options - utf8
+set enc=utf-8 fenc=utf-8 tenc=utf-8
+
+" Search and Clear in INSERT mode
+set ignorecase smartcase incsearch hlsearch
+autocmd InsertEnter * :let @/=""
+
+" Syntax highlight and Indent
+syntax on
+filetype plugin indent on
+set autoindent smartindent tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+set nowrap showmatch
+
+" Bell visial only
+set noerrorbells
+set visualbell t_vb=
+
+" Vim tabs shifting setting
+nmap <S-Left> :tabprevious<CR>
+nmap <S-Right> :tabnext<CR>
+
+" Keep working directory is tidy - // means that the directory information will be saved in the filename ( / will be replaced in % )
+set backupdir=/tmp//
+set directory=/tmp//
+set undodir=/tmp//

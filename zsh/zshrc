@@ -1,0 +1,224 @@
+# Brew path setting
+ARCH=$(uname -m)
+if [[ "$ARCH" == "arm64" ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [[ "$ARCH" == "x86_64" ]]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+else
+  echo "Unable to determine OS architecture - Not setting any PATH for Homebrew"
+fi
+
+# Brew aliases
+export HOMEBREW_NO_AUTO_UPDATE=1
+alias bro='brew update && brew outdated'
+alias bru='bro && brew upgrade && brew cleanup'
+alias brl='brew list'
+alias brlt='brew list --full-name -1 | grep /tap/'
+alias brs='brew search'
+alias bri='_ () { brew install "$@"; }; _'
+alias brr='_ () { brew remove "$@"; }; _'
+
+# Set default editor
+EDITOR=/usr/bin/vim
+# ZSH aliases
+alias zc="cat $HOME/.zshrc"                                                     # Cat ~/.zshrc
+alias ze="$EDITOR $HOME/.zshrc"	                                                # Edit ~/.zshrc
+alias zs="source $HOME/.zshrc"                                                  # Source ~/.zshrc
+alias zt='for i in $(seq 1 5); do time zsh -i -c exit; done'	                  # Shows loadtime of ~/.zshrc
+# VIMRC aliases
+alias vc="cat $HOME/.vimrc"                                                     # Cat ~/.vimrc
+alias ve="$EDITOR $HOME/.vimrc"                                                 # Edit ~/.vimrc
+alias vpi='vim -E -u ~/.vimrc -i NONE -c "PlugInstall" -c "qa"'                 # Run vim plugs - :PlugInstall
+alias vpu='vim -E -u ~/.vimrc -i NONE -c "PlugUpgrade" -c "PlugUpdate" -c "qa"' # Update vim plugs - :PlugUpdate
+alias vpr='rm -rf ~/.vim/plugged/ && vpi'                                       # Reinstall all the vim plugs
+
+# Prompt with git details - curl https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh -o ~/.git-prompt.sh
+if [ ! -f $HOME/.git-prompt.sh ]; then
+  curl -s https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh -o $HOME/.git-prompt.sh
+else
+  GIT_PS1_SHOWCOLORHINTS=true
+  GIT_PS1_SHOWDIRTYSTATE=true
+  GIT_PS1_SHOWSTASHSTATE=true
+  GIT_PS1_SHOWUNTRACKEDFILES=true
+  GIT_PS1_SHOWUPSTREAM="auto"
+  GIT_PS1_STATESEPARATOR=" "
+  GIT_PS1_DESCRIBE_STYLE="default"
+  GIT_PS1_HIDE_IF_PWD_IGNORED=true
+  GIT_PS1_COMPRESSSPARSESTATE=true
+  source $HOME/.git-prompt.sh
+  setopt PROMPT_SUBST
+  PROMPT='%F{blue}%~%f $(__git_ps1 "(%s)") %F{blue}%(!.#.>)_%f '
+  # RPROMPT='%F{blue}% %D{%d/%m/%y} %*'
+fi
+
+# History settings
+HISTFILE=~/.zsh_history
+#HISTTIMEFORMAT="%Y/%m/%d %H:%M:%S:   "
+HISTSIZE=11000
+SAVEHIST=10000
+setopt append_history           # Allow multiple sessions to append to one history
+setopt inc_append_history       # Write to history file immediately, not when shell quits
+setopt bang_hist                # Treat ! special during command expansion
+setopt extended_history         # Write history in :start:elasped;command format
+setopt hist_expire_dups_first   # Expire duplicates first when trimming history
+setopt hist_find_no_dups        # When searching history, don't repeat
+setopt hist_ignore_dups         # Ignore duplicate entries of previous events
+setopt hist_ignore_all_dups     # Delete old recorded entry if new entry is a duplicate
+setopt hist_ignore_space        # Prefix command with a space to skip it's recording
+setopt hist_reduce_blanks       # Remove extra blanks from each command added to history
+setopt hist_verify              # Don't execute immediately upon history expansion
+setopt share_history            # Share history among all sessions
+setopt hist_save_no_dups        # Don't write duplicate entries in the history file.
+setopt hist_beep                # Beep when accessing nonexistent history.
+alias history='history 1'	      # By default 'history' shows last 15 only. 'history 1' means all and 'history -n' means last n lines
+
+# Git aliases - Install "gh" using brew
+alias gs='gh auth status'
+alias gl='gh auth login'
+alias glo='gh auth logout'
+
+# AWS Profile Manager Aliases - Make sure to install "aws-profile-manager" from "https://github.com/sidh4u/aws-profile-manager"
+alias aws_list='aws-profile-manager list'          # List all available profiles
+alias aws_clear='aws-profile-manager clear'        # Clear the current AWS session
+alias aws_check='aws-profile-manager check'        # Check the current AWS session
+alias aws_create='_ () { [ -z "$1" ] && echo "Usage: aws_create <profile>" && return 1; aws-profile-manager create "$1"; }; _'      # Create a new profile
+alias aws_login='_ () { [ -z "$1" ] && echo "Usage: aws_login <profile>" && return 1; aws-profile-manager login "$1"; }; _'         # Login to a profile
+alias aws_update='_ () { [ -z "$1" ] && echo "Usage: aws_update <profile>" && return 1; aws-profile-manager update "$1"; }; _'      # Update a profile
+alias aws_delete='_ () { [ -z "$1" ] && echo "Usage: aws_delete <profile>" && return 1; aws-profile-manager delete "$1"; }; _'      # Delete a profile
+# AWS login for specific profiles
+alias aws_prod='aws-profile-manager login prod'  # Login to the 'prod' profile
+alias aws_dev='aws-profile-manager login dev'  # Login to the 'dev' profile
+
+# Docker aliases
+export DOCKER_BUILDKIT=1
+export BUILDKIT_PROGRESS=plain
+alias dl='aws ecr get-login-password --region $(aws configure get region) | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(aws configure get region).amazonaws.com'
+alias dlo='docker logout $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(aws configure get region).amazonaws.com'
+alias di='docker images'
+alias din='docker inspect $1'
+alias dh='docker history $1'
+alias drmi='docker rmi $1'
+alias drmc='docker rm -f $1'
+alias dpul='docker pull $1'
+alias dpus='docker push $1'
+alias dps='docker ps -a'
+alias dt='docker tag $1 $2'
+alias dip='echo Y | docker image prune -a > /dev/null'
+alias dsp='echo Y | docker system prune -a > /dev/null'
+alias dpsp='docker rm -f $(docker ps -a -q -f "status=exited" -f "status=dead")'
+alias de='_ () {docker exec -it "$1" /bin/bash;}; _'
+alias dr='_ () {docker run --rm -it -d "$1" /bin/bash;}; _'
+alias ds='_ () {docker stop "$1";}; _'
+alias dbc='docker buildx create --name multi-arch --platform linux/amd64,linux/arm64 --driver docker-container --bootstrap && docker buildx use multi-arch'
+alias dbrm='docker buildx rm multi-arch'
+alias dbin='docker buildx inspect multi-arch'
+alias dbl='docker buildx ls | grep multi-arch'
+
+# Kubectl aliases
+alias k='kubectl'
+alias kl='kubectl config get-contexts'
+alias ks='kubectl config use-context $1'
+alias kc='kubectl config current-context'
+alias kd='kubectl config delete-context $1'
+alias kv='kubectl config view'
+alias ka='kubectl edit -n kube-system configmap/aws-auth'
+alias kg='_ () { aws eks --region $(aws configure get region) update-kubeconfig --name "$1" --alias "$1" }; _'
+
+# Generic aliases
+alias ls='ls --color=auto'
+alias ll='ls -ltr'
+alias la='ls -altr'
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias rm='rm -i'
+alias mv='mv -i'
+alias cp='cp -i'
+alias date='gdate'                              # Install "coreutils" using brew
+alias awk='gawk'                                # Install "gawk" using brew
+alias sed='gsed'                                # Install "gnu-sed" using brew
+alias free='top -l 1 -s 0 | grep PhysMem'       # Simple 'free' command for mac
+function awkprint() { awk "{print \$${1:-1}};"; }
+
+# Network aliases
+alias ping='ping -c5 -n -i 0.4'
+alias wanip='dig +short myip.opendns.com @resolver1.opendns.com'
+alias lanip='ipconfig getifaddr en0'
+
+# Login to root with same zsh setting
+alias root='sudo -Es'                           # Carry .zshrc settings to root
+alias sudo='sudo '                              # Carry all aliases to sudo
+
+# Weather via command
+alias weather='curl -sk https://wttr.in/Bangalore | ghead -n -2'
+
+# VMware aliases
+alias vmup='_ () { vmrun -T fusion start ~/Virtual\ Machines.localized/"$1".vmwarevm/"$1".vmx nogui; }; _'
+alias vmdown='_ () { vmrun -T fusion stop ~/Virtual\ Machines.localized/"$1".vmwarevm/"$1".vmx soft=True; }; _'
+alias vmlist='echo -n "All available VMs: " && ls ~/Virtual\ Machines.localized/ | cut -d"." -f1 | xargs && echo -n "All running VMs: " && vmrun -T fusion list | cut -d"/" -f6 | cut -d"." -f1 | tail -n +2 | xargs'
+
+# Mac upgrade and tyme-sync aliases
+alias mac-upgrade='sudo softwareupdate -a -i --restart'
+alias mac-time-sync='sudo sntp -sS time.apple.com'
+
+# Finally, set Path for local scripts
+if [ -d "$HOME/.bin" ]; then
+  export PATH="$HOME/.bin:$PATH"
+else
+  mkdir -p $HOME/.bin && export PATH="$HOME/.bin:$PATH"
+fi
+
+
+#########################################################################################
+############## All useful ZSH plugins. Do not add anything below this line ##############
+#########################################################################################
+# Some must have plugins - zsh-completions, zsh-syntax-highlightin, zsh-autosuggestions and zsh-history-substring-search. Install them using brew before using it.
+
+# To make docker completions available to zsh
+mkdir -p $HOME/.docker/completions
+docker completion zsh > $HOME/.docker/completions/_docker
+echo $FPATH | grep --quiet $HOME/.docker/completions
+if [ $? -ne 0 ]; then
+  FPATH="$HOME/.docker/completions:$FPATH"
+fi
+
+# To make kubectl completions available to zsh
+mkdir -p $HOME/.kubectl/completions
+kubectl completion zsh > $HOME/.kubectl/completions/_kubectl
+echo $FPATH | grep --quiet $HOME/.kubectl/completions
+if [ $? -ne 0 ]; then
+  FPATH="$HOME/.kubectl/completions:${FPATH}"
+fi
+
+# To make Homebrew’s completions available to zsh.
+echo $FPATH | grep --quiet $(brew --prefix)/share/zsh-completions
+if [ $? -ne 0 ]; then
+  FPATH=$(brew --prefix)/share/zsh-completions:$FPATH
+fi
+
+# Speed up zsh compinit by only checking cache once a day
+if type brew &>/dev/null; then
+  autoload -Uz compinit
+  for dump in ~/.zcompdump(N.mh+24); do
+    compinit
+  done
+  compinit -C
+fi
+
+# Bash completions 'bashcompinit' in Zsh - It must be called after 'compinit'
+autoload -U +X bashcompinit && bashcompinit
+
+# To make aws completions available in zsh
+complete -C '/opt/homebrew/bin/aws_completer' aws
+
+# Enable zsh syntax highlight
+source $HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# Enable zsh autosuggestions
+source $HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# History search feature, where you can type in any part of any command from history and then press chosen keys, such as the UP and DOWN arrows, to cycle through
+source $HOMEBREW_PREFIX/share/zsh-history-substring-search/zsh-history-substring-search.zsh
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+#########################################################################################
