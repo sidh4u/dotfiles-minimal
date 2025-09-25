@@ -1,3 +1,6 @@
+# For profiling unhash bellow. Note: Also unhass last line at the bottom
+#zmodload zsh/zprof		# Top of your .zshrc file
+
 # Brew path setting
 ARCH=$(uname -m)
 if [[ "$ARCH" == "arm64" ]]; then
@@ -15,8 +18,10 @@ alias bru='bro && brew upgrade && brew cleanup'
 alias brl='brew list'
 alias brlt='brew list --full-name -1 | grep /tap/'
 alias brs='brew search'
+alias brt='_ () { brew tap "$@"; }; _'
 alias bri='_ () { brew install "$@"; }; _'
 alias brr='_ () { brew remove "$@"; }; _'
+
 
 # Set default editor
 EDITOR=/usr/bin/vim
@@ -28,7 +33,7 @@ alias zt='for i in $(seq 1 5); do time zsh -i -c exit; done'	                  #
 # VIMRC aliases
 alias vc="cat $HOME/.vimrc"                                                     # Cat ~/.vimrc
 alias ve="$EDITOR $HOME/.vimrc"                                                 # Edit ~/.vimrc
-alias vpi='vim -E -u ~/.vimrc -i NONE -c "PlugInstall" -c "qa"'                 # Run vim plugs - :PlugInstall
+alias vpi='vim -E -u ~/.vimrc -i NONE -c "PlugInstall" -c "qa"'                 # Run vim plugs - :PlugInstall 
 alias vpu='vim -E -u ~/.vimrc -i NONE -c "PlugUpgrade" -c "PlugUpdate" -c "qa"' # Update vim plugs - :PlugUpdate
 alias vpr='rm -rf ~/.vim/plugged/ && vpi'                                       # Reinstall all the vim plugs
 
@@ -49,6 +54,8 @@ else
   setopt PROMPT_SUBST
   PROMPT='%F{blue}%~%f $(__git_ps1 "(%s)") %F{blue}%(!.#.>)_%f '
   # RPROMPT='%F{blue}% %D{%d/%m/%y} %*'
+  # Remove PROMPT_EOL_MARK - That '%' at the end of a line in the Zsh shell is a visual indicator, when a command's output does not end with a newline character.
+  PROMPT_EOL_MARK=''
 fi
 
 # History settings
@@ -72,12 +79,19 @@ setopt hist_save_no_dups        # Don't write duplicate entries in the history f
 setopt hist_beep                # Beep when accessing nonexistent history.
 alias history='history 1'	      # By default 'history' shows last 15 only. 'history 1' means all and 'history -n' means last n lines
 
-# Git aliases - Install "gh" using brew
-alias gs='gh auth status'
-alias gl='gh auth login'
-alias glo='gh auth logout'
+# GitHub aliases - Install "gh" using brew
+alias ghs='gh auth status'                                   # GitHub login status
+alias ghl='gh auth login'                                    # GitHub login
+alias ghlo='gh auth logout'                                  # GitHub logout
+alias ghpub='_ () { gh repo create "$1" --public; }; _'      # GitHub public repo create
+alias ghpri='_ () { gh repo create "$1" --public; }; _'      # GitHub private repo create
+alias ghrd='_ () { gh repo delete <gitgub-account>/"$1" --yes; }; _'   # GitHub repo delete
+alias ghrl='gh repo list <gitgub-account>'                             # GitHub repo list
 
-# AWS Profile Manager Aliases - Make sure to install "aws-profile-manager" from "https://github.com/sidh4u/aws-profile-manager"
+# Google Cloud access settings - via functions
+alias automation-sa='_ () { gcloud config configurations activate automation-sa && export GOOGLE_APPLICATION_CREDENTIALS=~/.gcp/automation-sa.json; }; _'
+
+# AWS Profile Manager Aliases
 alias aws_list='aws-profile-manager list'          # List all available profiles
 alias aws_clear='aws-profile-manager clear'        # Clear the current AWS session
 alias aws_check='aws-profile-manager check'        # Check the current AWS session
@@ -85,9 +99,9 @@ alias aws_create='_ () { [ -z "$1" ] && echo "Usage: aws_create <profile>" && re
 alias aws_login='_ () { [ -z "$1" ] && echo "Usage: aws_login <profile>" && return 1; aws-profile-manager login "$1"; }; _'         # Login to a profile
 alias aws_update='_ () { [ -z "$1" ] && echo "Usage: aws_update <profile>" && return 1; aws-profile-manager update "$1"; }; _'      # Update a profile
 alias aws_delete='_ () { [ -z "$1" ] && echo "Usage: aws_delete <profile>" && return 1; aws-profile-manager delete "$1"; }; _'      # Delete a profile
-# AWS login for specific profiles
-alias aws_prod='aws-profile-manager login prod'  # Login to the 'prod' profile
-alias aws_dev='aws-profile-manager login dev'  # Login to the 'dev' profile
+
+# AWS login  for specific profiles
+alias aws_admin='aws_login admin'  # Login to the 'admin' profile
 
 # Docker aliases
 export DOCKER_BUILDKIT=1
@@ -102,18 +116,20 @@ alias drmc='docker rm -f $1'
 alias dpul='docker pull $1'
 alias dpus='docker push $1'
 alias dps='docker ps -a'
+alias dpb='docker builder prune -af'
 alias dt='docker tag $1 $2'
 alias dip='echo Y | docker image prune -a > /dev/null'
 alias dsp='echo Y | docker system prune -a > /dev/null'
 alias dpsp='docker rm -f $(docker ps -a -q -f "status=exited" -f "status=dead")'
 alias de='_ () {docker exec -it "$1" /bin/bash;}; _'
 alias dr='_ () {docker run --rm -it -d "$1" /bin/bash;}; _'
-alias ds='_ () {docker stop "$1";}; _'
+alias ds='_ () {docker stop "$@";}; _'
 alias dbc='docker buildx create --name multi-arch --platform linux/amd64,linux/arm64 --driver docker-container --bootstrap && docker buildx use multi-arch'
 alias dbrm='docker buildx rm multi-arch'
 alias dbin='docker buildx inspect multi-arch'
 alias dbl='docker buildx ls | grep multi-arch'
-
+alias dhl='_ () {curl -s "https://hub.docker.com/v2/repositories/<dockerhub-username>/$1/tags?page_size=100" | jq ".results[].name";}; _'
+ 
 # Kubectl aliases
 alias k='kubectl'
 alias kl='kubectl config get-contexts'
@@ -123,6 +139,52 @@ alias kd='kubectl config delete-context $1'
 alias kv='kubectl config view'
 alias ka='kubectl edit -n kube-system configmap/aws-auth'
 alias kg='_ () { aws eks --region $(aws configure get region) update-kubeconfig --name "$1" --alias "$1" }; _'
+alias kevent='kubectl get events --sort-by=".metadata.creationTimestamp"'
+kpf() {
+  if [[ $# -lt 2 ]]; then
+    echo "Usage: kpf <service/pod> <localPort:remotePort> [namespace]"
+    return 1
+  fi
+
+  local target=$1
+  local ports=$2
+  local ns=${3:-default}
+
+  if [[ "$target" == svc/* || "$target" == pod/* ]]; then
+    kubectl port-forward -n "$ns" "$target" "$ports"
+  else
+    echo "Specify 'svc/<name>' or 'pod/<name>' as the first argument."
+    return 1
+  fi
+}
+klog() {
+  if [[ $# -lt 1 ]]; then
+    echo "Usage: klog <pod-name> [container-name] [namespace]"
+    return 1
+  fi
+
+  local pod=$1
+  local container=$2
+  local ns=${3:-default}
+
+  if [[ -n "$container" ]]; then
+    kubectl logs -n "$ns" "$pod" -c "$container" -f
+  else
+    kubectl logs -n "$ns" "$pod" -f
+  fi
+}
+
+# Kind cluster
+#alias kindc='kind create cluster --config ~/.kind.yaml'
+alias kindc='kind create cluster'
+alias kindd='kind delete cluster --name kind'
+alias kindssh='docker exec -it kind-control-plane /bin/bash'
+alias kindload='_ () { kind load docker-image "$1"; }; _'
+
+# Minumube
+alias minikubec='minikube start'
+alias minikubed='minikube delete'
+alias minukubessh='minikube ssh' # sudo crictl images
 
 # Generic aliases
 alias ls='ls --color=auto'
@@ -142,7 +204,7 @@ function awkprint() { awk "{print \$${1:-1}};"; }
 
 # Network aliases
 alias ping='ping -c5 -n -i 0.4'
-alias wanip='dig +short myip.opendns.com @resolver1.opendns.com'
+alias wanip='curl -s https://ipinfo.io/ip/ | xargs'
 alias lanip='ipconfig getifaddr en0'
 
 # Login to root with same zsh setting
@@ -157,9 +219,21 @@ alias vmup='_ () { vmrun -T fusion start ~/Virtual\ Machines.localized/"$1".vmwa
 alias vmdown='_ () { vmrun -T fusion stop ~/Virtual\ Machines.localized/"$1".vmwarevm/"$1".vmx soft=True; }; _'
 alias vmlist='echo -n "All available VMs: " && ls ~/Virtual\ Machines.localized/ | cut -d"." -f1 | xargs && echo -n "All running VMs: " && vmrun -T fusion list | cut -d"/" -f6 | cut -d"." -f1 | tail -n +2 | xargs'
 
+# Ssh to local VM's
+alias ssh-copy='_ () { ssh-copy-id "root@$1"; }; _'
+alias f0='ssh f0 -l root' #sm local
+alias sm='ssh sm' #sm
+
+# Local Valut Login Setup
+alias vl='export VAULT_ADDR="http://<server>:8200" && export VAULT_TOKEN="<token>" && vault status'
+
 # Mac upgrade and tyme-sync aliases
 alias mac-upgrade='sudo softwareupdate -a -i --restart'
 alias mac-time-sync='sudo sntp -sS time.apple.com'
+
+# JAVA PATH - Install using (brew install --cask corretto@21)
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-21.jdk/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
 
 # Finally, set Path for local scripts
 if [ -d "$HOME/.bin" ]; then
@@ -168,32 +242,37 @@ else
   mkdir -p $HOME/.bin && export PATH="$HOME/.bin:$PATH"
 fi
 
-
 #########################################################################################
 ############## All useful ZSH plugins. Do not add anything below this line ##############
 #########################################################################################
-# Some must have plugins - zsh-completions, zsh-syntax-highlightin, zsh-autosuggestions and zsh-history-substring-search. Install them using brew before using it.
+# Some must have plugins - zsh-completions, zsh-syntax-highlightin, zsh-autosuggestions and zsh-history-substring-search. Install them using brew.
 
-# To make docker completions available to zsh
+# To make docker completions available in zsh
 mkdir -p $HOME/.docker/completions
 docker completion zsh > $HOME/.docker/completions/_docker
 echo $FPATH | grep --quiet $HOME/.docker/completions
 if [ $? -ne 0 ]; then
   FPATH="$HOME/.docker/completions:$FPATH"
+  autoload -Uz compinit
+  compinit
 fi
 
-# To make kubectl completions available to zsh
+# To make kubectl completions available in zsh
 mkdir -p $HOME/.kubectl/completions
 kubectl completion zsh > $HOME/.kubectl/completions/_kubectl
 echo $FPATH | grep --quiet $HOME/.kubectl/completions
 if [ $? -ne 0 ]; then
   FPATH="$HOME/.kubectl/completions:${FPATH}"
+  autoload -Uz compinit
+  compinit
 fi
 
-# To make Homebrew’s completions available to zsh.
+# To make Homebrew’s completions available in zsh.
 echo $FPATH | grep --quiet $(brew --prefix)/share/zsh-completions
 if [ $? -ne 0 ]; then
   FPATH=$(brew --prefix)/share/zsh-completions:$FPATH
+  autoload -Uz compinit
+  compinit
 fi
 
 # Speed up zsh compinit by only checking cache once a day
@@ -222,3 +301,6 @@ source $HOMEBREW_PREFIX/share/zsh-history-substring-search/zsh-history-substring
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 #########################################################################################
+
+# For profiling unhash bellow. Note: Also unhass first line at the top
+#zprof				# bottom of .zshrc
