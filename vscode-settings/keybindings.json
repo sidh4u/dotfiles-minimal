@@ -1,0 +1,119 @@
+// Place your key bindings in this file to override the defaults
+[
+  // ── Editor Customization ──
+  // Default Cmd+Shift+[ & Cmd+Shift+] → navigate between editor tabs
+  // Cmd+1/9 → jump first/last editor tab
+  // Cmd+[2-8] → jump to numbered editor tab
+  {
+    "key": "cmd+1",
+    "command": "workbench.action.firstEditorInGroup"
+  },
+  {
+    "key": "cmd+2",
+    "command": "workbench.action.openEditorAtIndex2"
+  },
+  {
+    "key": "cmd+3",
+    "command": "workbench.action.openEditorAtIndex3"
+  },
+  {
+    "key": "cmd+4",
+    "command": "workbench.action.openEditorAtIndex4"
+  },
+  {
+    "key": "cmd+5",
+    "command": "workbench.action.openEditorAtIndex5"
+  },
+  {
+    "key": "cmd+6",
+    "command": "workbench.action.openEditorAtIndex6"
+  },
+  {
+    "key": "cmd+7",
+    "command": "workbench.action.openEditorAtIndex7"
+  },
+  {
+    "key": "cmd+8",
+    "command": "workbench.action.openEditorAtIndex8"
+  },
+  {
+    "key": "cmd+9",
+    "command": "workbench.action.lastEditorInGroup"
+  },
+  {
+    "key": "cmd+right",
+    "command": "workbench.action.nextEditor"
+  },
+  {
+    "key": "cmd+left",
+    "command": "workbench.action.previousEditor"
+  },
+  // ── Editor Zoom Customization ──
+  // Cmd++ / Cmd+- → zoom in/out
+  // Cmd+0 → reset zoom
+  {
+    "key": "cmd+0",
+    "command": "workbench.action.zoomReset"
+  },
+  // ── Terminal Customization ──
+  // Cmd+j → toggle terminal panel
+  // Cmd+t → new terminal tab
+  // Cmd+m → maximize/minimize terminal panel
+  // Cmd+left / Cmd+right → navigate between terminals
+  // Cmd+/ → split terminal
+  // Cmd+, / Cmd+. → move between terminal split panes
+  {
+    "key": "cmd+t",
+    "command": "workbench.action.terminal.new"
+  },
+  {
+    "key": "cmd+m",
+    "command": "workbench.action.toggleMaximizedPanel",
+    "when": "terminalFocus"
+  },
+  {
+    "key": "cmd+left",
+    "command": "workbench.action.terminal.focusPrevious",
+    "when": "terminalFocus"
+  },
+  {
+    "key": "cmd+right",
+    "command": "workbench.action.terminal.focusNext",
+    "when": "terminalFocus"
+  },
+  {
+    "key": "cmd+/",
+    "command": "workbench.action.terminal.split",
+    "when": "terminalFocus"
+  },
+  {
+    "key": "cmd+,",
+    "command": "workbench.action.terminal.focusPreviousPane",
+    "when": "terminalFocus"
+  },
+  {
+    "key": "cmd+.",
+    "command": "workbench.action.terminal.focusNextPane",
+    "when": "terminalFocus"
+  },
+  // Shift+Enter → newline in terminal apps (e.g. Claude Code) instead of submit
+  {
+    "key": "shift+enter",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": {
+      "text": "\u001b\r"
+    },
+    "when": "terminalFocus"
+  },
+  // ── Claude Code panel ──
+  // Ctrl+Cmd+c → toggle Claude Code panel
+  // ── Sidebar / Panel Defaults (documented only) ──
+  // Cmd+b → toggle primary sidebar (Explorer etc.)
+  // Cmd+Shift+e → Explorer
+  // Cmd+Shift+f → Search
+  // Cmd+Shift+d → Debug
+  // Cmd+Shift+x → Extensions
+  // Ctrl+Shift+g → Source Control
+  // Opt+Cmd+b → toggle secondary sidebar (right sidebar - Copilot)
+  // Shift+Cmd+i → open Copilot Sidebar
+]

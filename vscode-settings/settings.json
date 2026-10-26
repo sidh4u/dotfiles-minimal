@@ -1,0 +1,54 @@
+// ── VS Code Settings ──
+// Place this in settings.json (supports JSONC, so comments are allowed)
+{
+    // ── Editor Appearance ──
+    "editor.minimap.enabled": false, // Disable minimap (less clutter)
+    "editor.cursorBlinking": "phase", // Smooth blinking cursor
+    "editor.fontLigatures": true, // Enable font ligatures (if font supports it)
+    "editor.fontSize": 12, // Editor font size (13 is a good balance for retina/HD)
+    "editor.letterSpacing": 0, // Normal letter spacing (0 avoids uneven monospace look)
+    "editor.lineHeight": 20, // Line height (20 = airy, try 18 if you want tighter code)
+    "editor.tabSize": 4, // Tabs = 4 spaces
+    "editor.wordWrap": "on", // Wrap long lines
+    // ── Editor Behavior ──
+    "editor.formatOnSave": true, // Format code on save
+    "editor.formatOnPaste": true, // Format on paste
+    "editor.formatOnType": true, // Format as you type
+    "editor.smoothScrolling": true, // Smooth scrolling
+    "editor.stickyScroll.enabled": true, // Show current function/class scope at top
+    "editor.inlineSuggest.enabled": true, // Enable inline suggestions (ghost text, better with Copilot)
+    // ── Navigation ──
+    "breadcrumbs.enabled": true, // Enable breadcrumbs (file > symbol path)
+    // ── Diff / Source Control ──
+    "diffEditor.ignoreTrimWhitespace": true, // Ignore whitespace changes in diffs
+    // ── File Handling ──
+    "files.trimTrailingWhitespace": true, // Remove trailing spaces on save
+    "files.trimFinalNewlines": true, // Trim extra blank lines at EOF
+    "files.insertFinalNewline": true, // Ensure file ends with a single newline
+    // ── Terminal ──
+    "terminal.integrated.fontSize": 12, // Terminal font size (slightly larger than editor for readability)
+    "terminal.integrated.lineHeight": 1.2, // Terminal line spacing
+    "terminal.integrated.letterSpacing": 0, // Normal spacing (avoid uneven characters)
+    "terminal.integrated.showExitAlert": false, // No alert when terminal exits
+    "terminal.integrated.gpuAcceleration": "auto", // Auto GPU accel (best balance of speed/stability)
+    "terminal.integrated.enablePersistentSessions": true, // Restore terminals on reload
+    "terminal.integrated.hideOnStartup": "always", // Don’t auto-open terminal on startup
+    // ── Explorer / File Tree ──
+    "explorer.confirmDragAndDrop": false, // Disable confirmation on drag/drop
+    "explorer.confirmDelete": false, // Disable delete confirmation (trash still used)
+    "workbench.tree.indent": 16, // Nicer folder indentation
+    // ── Workbench ──
+    "workbench.startupEditor": "none", // No welcome page on startup
+    // ── Extensions ──
+    "extensions.ignoreRecommendations": true, // Don’t nag about extensions
+    // ── GitHub Copilot ──
+    "github.copilot.nextEditSuggestions.enabled": true, // Enable next edit suggestions
+    "github.copilot.selectedCompletionModel": "gpt-4", // Force GPT-4 completions (more consistent)
+    // ── Chat / MCP ──
+    "chat.mcp.autostart": "newAndOutdated", // Auto-start MCP servers for new/outdated sessions
+    // ── Claude Code ──
+    "claudeCode.preferredLocation": "panel", // Open Claude Code in the panel
+    "claudeCode.hideOnboarding": true, // Skip onboarding
+    // ── Docker ──
+    "docker.extension.enableComposeLanguageServer": false // Disable Compose language server
+}

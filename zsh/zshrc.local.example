@@ -1,0 +1,23 @@
+# ~/.zshrc.local - machine-specific settings and secrets. Never commit this file.
+# install.sh copies this template to ~/.zshrc.local (chmod 600) if it doesn't exist.
+# It is sourced near the end of ~/.zshrc, after PATH settings and before plugins.
+
+# Default cloud profile / account
+#export AWS_PROFILE='default'
+#export CLOUDSDK_ACTIVE_CONFIG_NAME='default'
+
+# Local Vault for the vl alias (local testing only)
+#export VAULT_ADDR='http://127.0.0.1:8200'
+#export VAULT_TOKEN='hvs.<your-token>'
+
+# Docker Hub user for the dhl alias (list image tags)
+#export DOCKER_USER='your-dockerhub-user'
+
+# kind cluster name used by kindd / kindssh (default: kind)
+#export KIND_CLUSTER=kind
+
+# Tokens / API keys you want in every shell
+#export GITHUB_TOKEN='...'
+
+# Per-machine overrides, e.g. a different JDK
+#export JAVA_HOME=$(/usr/libexec/java_home -v 17); path=($JAVA_HOME/bin $path)

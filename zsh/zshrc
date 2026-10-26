@@ -1,97 +1,137 @@
-# For profiling unhash bellow. Note: Also unhass last line at the bottom
-#zmodload zsh/zprof		# Top of your .zshrc file
+# Startup profiling: run `zp` (sets ZSH_PROFILE; zprof prints at the bottom)
+[[ -n $ZSH_PROFILE ]] && zmodload zsh/zprof
+
+# Fix PATH duplication
+typeset -U path fpath manpath
 
 # Brew path setting
-ARCH=$(uname -m)
-if [[ "$ARCH" == "arm64" ]]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-elif [[ "$ARCH" == "x86_64" ]]; then
-  eval "$(/usr/local/bin/brew shellenv)"
-else
-  echo "Unable to determine OS architecture - Not setting any PATH for Homebrew"
-fi
+[[ -d $HOME/.zsh ]] || mkdir -p $HOME/.zsh
+_brew_env=$HOME/.zsh/brew-shellenv.zsh
+for _brew in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+  if [[ -x $_brew ]]; then
+    [[ -s $_brew_env && $_brew_env -nt $_brew ]] || "$_brew" shellenv > $_brew_env
+    source $_brew_env
+    break
+  fi
+done
+unset _brew _brew_env
 
 # Brew aliases
 export HOMEBREW_NO_AUTO_UPDATE=1
-alias bro='brew update && brew outdated'
-alias bru='bro && brew upgrade && brew cleanup'
+export HOMEBREW_NO_ENV_HINTS=1
+export HOMEBREW_NO_INSTALL_CLEANUP=1
+alias bro='brew update && brew outdated --greedy'
+alias bru='brew update && brew upgrade --greedy --yes && brew autoremove && brew cleanup -s'
 alias brl='brew list'
-alias brlt='brew list --full-name -1 | grep /tap/'
+alias brlt='brew list --full-name -1 | grep /'
 alias brs='brew search'
-alias brt='_ () { brew tap "$@"; }; _'
-alias bri='_ () { brew install "$@"; }; _'
-alias brr='_ () { brew remove "$@"; }; _'
+alias bri='brew install'
+alias brt='brew tap'
+alias brr='brew uninstall'
 
+# Editor
+export EDITOR=vim
+export VISUAL="$EDITOR"
+# zsh aliases
+alias zc='cat ~/.zshrc'                                  # Cat ~/.zshrc
+alias ze='$EDITOR ~/.zshrc'                              # Edit ~/.zshrc
+alias zs='exec zsh'                                      # Reload shell cleanly
+alias zt='for i in {1..5}; do time zsh -i -c exit; done' # Startup time
+alias zp='ZSH_PROFILE=1 zsh -i -c exit'                  # Profile slow startup
+# vim aliases
+alias vc='cat ~/.vimrc'                                                                   # Cat ~/.vimrc
+alias ve='$EDITOR ~/.vimrc'                                                               # Edit ~/.vimrc
+alias vpi='vim -es -u ~/.vimrc -i NONE -c PlugInstall -c qa'                              # :PlugInstall
+alias vpu='vim -es -u ~/.vimrc -i NONE -c PlugUpgrade -c PlugUpdate -c qa'                # :PlugUpgrade :PlugUpdate
+alias vpc='vim -es -u ~/.vimrc -i NONE -c "PlugClean!" -c qa'                             # Remove unused plugs
+alias vps='vim -es -u ~/.vimrc -i NONE -c PlugStatus -c "set nonumber" -c "%p" -c "qa!"'  # Plug status
+alias vpr='[[ -d ~/.vim/plugged ]] && rm -rf ~/.vim/plugged; vpi'                         # Reinstall all plugs
 
-# Set default editor
-EDITOR=/usr/bin/vim
-# ZSH aliases
-alias zc="cat $HOME/.zshrc"                                                     # Cat ~/.zshrc
-alias ze="$EDITOR $HOME/.zshrc"	                                                # Edit ~/.zshrc
-alias zs="source $HOME/.zshrc"                                                  # Source ~/.zshrc
-alias zt='for i in $(seq 1 5); do time zsh -i -c exit; done'	                  # Shows loadtime of ~/.zshrc
-# VIMRC aliases
-alias vc="cat $HOME/.vimrc"                                                     # Cat ~/.vimrc
-alias ve="$EDITOR $HOME/.vimrc"                                                 # Edit ~/.vimrc
-alias vpi='vim -E -u ~/.vimrc -i NONE -c "PlugInstall" -c "qa"'                 # Run vim plugs - :PlugInstall 
-alias vpu='vim -E -u ~/.vimrc -i NONE -c "PlugUpgrade" -c "PlugUpdate" -c "qa"' # Update vim plugs - :PlugUpdate
-alias vpr='rm -rf ~/.vim/plugged/ && vpi'                                       # Reinstall all the vim plugs
-
-# Prompt with git details - curl https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh -o ~/.git-prompt.sh
-if [ ! -f $HOME/.git-prompt.sh ]; then
-  curl -s https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh -o $HOME/.git-prompt.sh
-else
-  GIT_PS1_SHOWCOLORHINTS=true
-  GIT_PS1_SHOWDIRTYSTATE=true
-  GIT_PS1_SHOWSTASHSTATE=true
-  GIT_PS1_SHOWUNTRACKEDFILES=true
-  GIT_PS1_SHOWUPSTREAM="auto"
-  GIT_PS1_STATESEPARATOR=" "
-  GIT_PS1_DESCRIBE_STYLE="default"
-  GIT_PS1_HIDE_IF_PWD_IGNORED=true
-  GIT_PS1_COMPRESSSPARSESTATE=true
-  source $HOME/.git-prompt.sh
-  setopt PROMPT_SUBST
-  PROMPT='%F{blue}%~%f $(__git_ps1 "(%s)") %F{blue}%(!.#.>)_%f '
-  # RPROMPT='%F{blue}% %D{%d/%m/%y} %*'
-  # Remove PROMPT_EOL_MARK - That '%' at the end of a line in the Zsh shell is a visual indicator, when a command's output does not end with a newline character.
-  PROMPT_EOL_MARK=''
+# Prompt with git details
+_git_prompt=$HOME/.git-prompt.sh
+if [[ ! -s $_git_prompt ]]; then
+  curl -fsS https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh \
+    -o "$_git_prompt" || rm -f "$_git_prompt"
 fi
+if [[ -s $_git_prompt ]]; then
+  GIT_PS1_SHOWCOLORHINTS=true       # Colour branch by state - green clean, red detached
+  GIT_PS1_SHOWDIRTYSTATE=true       # * unstaged, + staged, # repo has no commits yet
+  GIT_PS1_SHOWSTASHSTATE=true       # $ something is stashed
+  GIT_PS1_SHOWUNTRACKEDFILES=true   # % untracked files present
+  GIT_PS1_SHOWUPSTREAM="auto"       # < behind, > ahead, <> diverged, = in sync
+  GIT_PS1_STATESEPARATOR=" "        # Gap between branch name and the flags above
+  GIT_PS1_DESCRIBE_STYLE="default"  # Detached HEAD as exact tag; else (short-sha...)
+  GIT_PS1_HIDE_IF_PWD_IGNORED=true  # No prompt decoration inside gitignored dirs
+  GIT_PS1_COMPRESSSPARSESTATE=true  # ? instead of |SPARSE for sparse checkouts
+  source "$_git_prompt"
+  setopt PROMPT_SUBST
+  precmd_functions+=(_set_prompt)
+  # Flag order in output: ? * + $ % then upstream. In-progress ops append
+  # |REBASE 1/3, |MERGING, |CHERRY-PICKING, |REVERTING, |AM, |BISECTING
+  _set_prompt() { __git_ps1 '%F{blue}%~%f ' ' %F{blue}%(!.#.>)_%f ' '(⎇ %s)' }
+else
+  PROMPT='%F{blue}%~%f %F{blue}%(!.#.>)_%f '
+fi
+unset _git_prompt
+PROMPT_EOL_MARK=''
 
 # History settings
 HISTFILE=~/.zsh_history
-#HISTTIMEFORMAT="%Y/%m/%d %H:%M:%S:   "
-HISTSIZE=11000
-SAVEHIST=10000
-setopt append_history           # Allow multiple sessions to append to one history
-setopt inc_append_history       # Write to history file immediately, not when shell quits
+HISTSIZE=200000
+SAVEHIST=100000
 setopt bang_hist                # Treat ! special during command expansion
-setopt extended_history         # Write history in :start:elasped;command format
+setopt extended_history         # Write history in :start:elapsed;command format
+setopt share_history            # Share history among all sessions (implies inc_append_history, append_history)
 setopt hist_expire_dups_first   # Expire duplicates first when trimming history
 setopt hist_find_no_dups        # When searching history, don't repeat
-setopt hist_ignore_dups         # Ignore duplicate entries of previous events
 setopt hist_ignore_all_dups     # Delete old recorded entry if new entry is a duplicate
-setopt hist_ignore_space        # Prefix command with a space to skip it's recording
+setopt hist_save_no_dups        # Don't write duplicate entries in the history file
+setopt hist_ignore_space        # Prefix command with a space to skip its recording
 setopt hist_reduce_blanks       # Remove extra blanks from each command added to history
 setopt hist_verify              # Don't execute immediately upon history expansion
-setopt share_history            # Share history among all sessions
-setopt hist_save_no_dups        # Don't write duplicate entries in the history file.
-setopt hist_beep                # Beep when accessing nonexistent history.
-alias history='history 1'	      # By default 'history' shows last 15 only. 'history 1' means all and 'history -n' means last n lines
+setopt hist_no_store            # Don't record 'history'/'fc' commands themselves
+unsetopt hist_beep              # No beep on nonexistent history
+# history selects by position: 'history', 'history -20', 'history 100 200'
+history() {
+  if (( $# )); then
+    builtin history -i "$@"
+  else
+    builtin history -i 1
+  fi
+}
+# h searches by content: 'h docker', 'h git commit'
+h() {
+  if (( $# )); then
+    builtin history -i 1 | grep -i -- "$*"
+  else
+    builtin history -i 1
+  fi
+}
 
-# GitHub aliases - Install "gh" using brew
-alias ghs='gh auth status'                                   # GitHub login status
-alias ghl='gh auth login'                                    # GitHub login
-alias ghlo='gh auth logout'                                  # GitHub logout
-alias ghpub='_ () { gh repo create "$1" --public; }; _'      # GitHub public repo create
-alias ghpri='_ () { gh repo create "$1" --public; }; _'      # GitHub private repo create
-alias ghrd='_ () { gh repo delete <gitgub-account>/"$1" --yes; }; _'   # GitHub repo delete
-alias ghrl='gh repo list <gitgub-account>'                             # GitHub repo list
+# GitHub aliases - install "gh" using brew
+alias ghs='gh auth status'                         # Login status
+alias ghl='gh auth login'                          # Login
+alias ghlo='gh auth logout'                        # Logout
+alias ghpub='gh repo create --public'              # Create public repo
+alias ghpri='gh repo create --private'             # Create private repo
+alias ghrd='gh repo delete'                        # Delete repo (prompts)
+alias ghrl='gh repo list'                          # List your repos
+alias ghc='gh repo clone'                          # Clone
+alias ghv='gh repo view --web'                     # Open in browser
+alias ghpr='gh pr create --fill'                   # PR from current branch
+alias ghprl='gh pr list'                           # List PRs
+alias ghprv='gh pr view --web'                     # Open PR in browser
+alias ghrun='gh run list --limit 10'               # Recent Actions runs
+alias ghrw='gh run watch'                          # Watch a run
 
-# Google Cloud access settings - via functions
-alias automation-sa='_ () { gcloud config configurations activate automation-sa && export GOOGLE_APPLICATION_CREDENTIALS=~/.gcp/automation-sa.json; }; _'
+# AWS CLI aliases - brew install awscli
+alias awsw='aws sts get-caller-identity'                     # Who am I (account, ARN)
+alias awsls='aws configure list-profiles'                    # List configured profiles
+alias awsp='_ () { export AWS_PROFILE="$1" && aws sts get-caller-identity; }; _'  # Switch profile: awsp <profile>
+alias awsr='aws configure get region'                        # Current region
+alias awssso='aws sso login'                                 # SSO login (uses AWS_PROFILE)
 
-# AWS Profile Manager Aliases
+# AWS Profile Manager aliases - https://github.com/sidh4u/aws-profile-manager (install into ~/.bin)
 alias aws_list='aws-profile-manager list'          # List all available profiles
 alias aws_clear='aws-profile-manager clear'        # Clear the current AWS session
 alias aws_check='aws-profile-manager check'        # Check the current AWS session
@@ -100,207 +140,280 @@ alias aws_login='_ () { [ -z "$1" ] && echo "Usage: aws_login <profile>" && retu
 alias aws_update='_ () { [ -z "$1" ] && echo "Usage: aws_update <profile>" && return 1; aws-profile-manager update "$1"; }; _'      # Update a profile
 alias aws_delete='_ () { [ -z "$1" ] && echo "Usage: aws_delete <profile>" && return 1; aws-profile-manager delete "$1"; }; _'      # Delete a profile
 
-# AWS login  for specific profiles
-alias aws_admin='aws_login admin'  # Login to the 'admin' profile
-
 # Docker aliases
 export DOCKER_BUILDKIT=1
 export BUILDKIT_PROGRESS=plain
-alias dl='aws ecr get-login-password --region $(aws configure get region) | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(aws configure get region).amazonaws.com'
-alias dlo='docker logout $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(aws configure get region).amazonaws.com'
+# ECR login/logout
+_ecr_registry() { echo "$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(aws configure get region).amazonaws.com"; }
+alias dl='aws ecr get-login-password --region $(aws configure get region) | docker login --username AWS --password-stdin $(_ecr_registry)'
+alias dlo='docker logout $(_ecr_registry)'
+# Images and containers
 alias di='docker images'
-alias din='docker inspect $1'
-alias dh='docker history $1'
-alias drmi='docker rmi $1'
-alias drmc='docker rm -f $1'
-alias dpul='docker pull $1'
-alias dpus='docker push $1'
+alias din='docker inspect'
+alias dh='docker history'
+alias drmi='docker rmi'
+alias drmc='docker rm -f'
+alias dpul='docker pull'
+alias dpus='docker push'
+alias dt='docker tag'
 alias dps='docker ps -a'
+alias ds='docker stop'
+alias de='_ () { docker exec -it "$1" "${2:-/bin/sh}"; }; _'
+alias dr='_ () { docker run --rm -it "$1" "${2:-/bin/sh}"; }; _'
+alias dlg='docker logs -f'
+# Pruning
 alias dpb='docker builder prune -af'
-alias dt='docker tag $1 $2'
-alias dip='echo Y | docker image prune -a > /dev/null'
-alias dsp='echo Y | docker system prune -a > /dev/null'
-alias dpsp='docker rm -f $(docker ps -a -q -f "status=exited" -f "status=dead")'
-alias de='_ () {docker exec -it "$1" /bin/bash;}; _'
-alias dr='_ () {docker run --rm -it -d "$1" /bin/bash;}; _'
-alias ds='_ () {docker stop "$@";}; _'
-alias dbc='docker buildx create --name multi-arch --platform linux/amd64,linux/arm64 --driver docker-container --bootstrap && docker buildx use multi-arch'
+alias dip='docker image prune -af'
+alias dsp='docker system prune -af --volumes'
+alias dpsp='docker container prune -f'
+# buildx
+alias dbc='docker buildx create --name multi-arch --driver docker-container --platform linux/amd64,linux/arm64 --bootstrap --use'
 alias dbrm='docker buildx rm multi-arch'
 alias dbin='docker buildx inspect multi-arch'
 alias dbl='docker buildx ls | grep multi-arch'
-alias dhl='_ () {curl -s "https://hub.docker.com/v2/repositories/<dockerhub-username>/$1/tags?page_size=100" | jq ".results[].name";}; _'
- 
+# Docker Hub tags
+alias dhl='_ () { curl -s "https://hub.docker.com/v2/repositories/${DOCKER_USER:?export DOCKER_USER first}/$1/tags?page_size=100" | jq -r ".results[].name"; }; _'
+
 # Kubectl aliases
-alias k='kubectl'
 alias kl='kubectl config get-contexts'
-alias ks='kubectl config use-context $1'
+alias ks='kubectl config use-context'
 alias kc='kubectl config current-context'
-alias kd='kubectl config delete-context $1'
-alias kv='kubectl config view'
+alias kd='kubectl config delete-context'
+alias kv='kubectl config view --minify'
 alias ka='kubectl edit -n kube-system configmap/aws-auth'
-alias kg='_ () { aws eks --region $(aws configure get region) update-kubeconfig --name "$1" --alias "$1" }; _'
-alias kevent='kubectl get events --sort-by=".metadata.creationTimestamp"'
+alias kg='_ () { aws eks --region $(aws configure get region) update-kubeconfig --name "$1" --alias "$1"; }; _'
+alias kevent='kubectl get events --sort-by=.lastTimestamp'
+alias kns='kubectl config set-context --current --namespace'
+alias kgp='kubectl get pods -o wide'
+alias kgn='kubectl get nodes -o wide'
+alias kdp='kubectl describe pod'
+alias ktop='kubectl top pods --sort-by=memory'
+# Port forward: kpf svc/api 8080:80 [namespace]
 kpf() {
-  if [[ $# -lt 2 ]]; then
-    echo "Usage: kpf <service/pod> <localPort:remotePort> [namespace]"
-    return 1
-  fi
-
-  local target=$1
-  local ports=$2
-  local ns=${3:-default}
-
-  if [[ "$target" == svc/* || "$target" == pod/* ]]; then
-    kubectl port-forward -n "$ns" "$target" "$ports"
-  else
-    echo "Specify 'svc/<name>' or 'pod/<name>' as the first argument."
-    return 1
-  fi
+  (( $# >= 2 )) || { echo "Usage: kpf <svc/name|pod/name|name> <local:remote> [namespace]"; return 1 }
+  kubectl port-forward -n "${3:-default}" "$1" "$2"
 }
+# Logs: klog <pod> [container] [namespace]
 klog() {
-  if [[ $# -lt 1 ]]; then
-    echo "Usage: klog <pod-name> [container-name] [namespace]"
-    return 1
-  fi
-
-  local pod=$1
-  local container=$2
-  local ns=${3:-default}
-
-  if [[ -n "$container" ]]; then
-    kubectl logs -n "$ns" "$pod" -c "$container" -f
-  else
-    kubectl logs -n "$ns" "$pod" -f
-  fi
+  (( $# >= 1 )) || { echo "Usage: klog <pod> [container] [namespace]"; return 1 }
+  local pod=$1 container=$2 ns=${3:-default}
+  kubectl logs -n "$ns" --tail=200 -f "$pod" ${container:+-c "$container"}
 }
 
 # Kind cluster
-#alias kindc='kind create cluster --config ~/.kind.yaml'
-alias kindc='kind create cluster'
-alias kindd='kind delete cluster --name kind'
-alias kindssh='docker exec -it kind-control-plane /bin/bash'
-alias kindload='_ () { kind load docker-image "$1"; }; _'
+KIND_CLUSTER=${KIND_CLUSTER:-kind}
+alias kindc='kind create cluster'                                   # Single-node default
+alias kindcc='_ () { kind create cluster --config "${1:?Usage: kindcc <config.yaml>}"; }; _'  # From a config file
+alias kindd='kind delete cluster --name $KIND_CLUSTER'
+alias kindl='kind get clusters'                                     # List clusters
+alias kindssh='docker exec -it ${KIND_CLUSTER}-control-plane /bin/bash'
+alias kindload='kind load docker-image'                             # Takes multiple images
+alias kindexp='kind export logs'                                    # Dump cluster logs for debugging
 
-# Minumube
-alias minikubec='minikube start'
-alias minikubed='minikube delete'
-alias minukubessh='minikube ssh' # sudo crictl images
+# Minikube
+alias mk='minikube'
+alias mkc='minikube start'
+alias mkd='minikube delete'
+alias mkssh='minikube ssh'                    # then: sudo crictl images
+alias mks='minikube status'
+alias mkip='minikube ip'
+alias mkdash='minikube dashboard'
+alias mkload='minikube image load'            # Sideload a local image
+alias mkls='minikube image ls'                # Images in the node
+alias mkenv='eval $(minikube docker-env)'     # Point local docker at minikube's daemon
+alias mkenvu='eval $(minikube docker-env -u)' # Undo the above
+
+# Google Cloud aliases - brew install --cask gcloud-cli
+alias gcauth='gcloud auth login'                                # Log in (browser)
+alias gcadc='gcloud auth application-default login'             # Application Default Credentials for SDKs/Terraform
+alias gcls='gcloud config configurations list'                  # List configurations
+alias gcuse='gcloud config configurations activate'             # Switch configuration: gcuse <name>
+alias gcinfo='gcloud config list'                               # Active account / project / region
+alias gcproj='gcloud config set project'                        # Set project: gcproj <project-id>
+alias gke='_ () { gcloud container clusters get-credentials "${1:?Usage: gke <cluster> <region>}" --region "${2:?Usage: gke <cluster> <region>}"; }; _'  # kubeconfig for GKE
+
+# Azure aliases - brew install --cask azure-cli
+alias azl='az login'                                            # Log in (browser)
+alias azs='az account show -o table'                            # Current subscription
+alias azls='az account list -o table'                           # List subscriptions
+alias azuse='az account set --subscription'                     # Switch: azuse <name|id>
+alias aks='_ () { az aks get-credentials --resource-group "${1:?Usage: aks <resource-group> <cluster>}" --name "${2:?Usage: aks <resource-group> <cluster>}"; }; _'  # kubeconfig for AKS
+
+# Terraform aliases - brew install hashicorp/tap/terraform
+alias tf='terraform'
+alias tfi='terraform init'
+alias tfu='terraform init -upgrade'                             # Re-init, upgrading providers
+alias tfp='terraform plan'
+alias tfa='terraform apply'
+alias tfd='terraform destroy'
+alias tff='terraform fmt -recursive'
+alias tfv='terraform validate'
+alias tfo='terraform output'
+alias tfs='terraform state list'
+alias tfw='terraform workspace list'
 
 # Generic aliases
-alias ls='ls --color=auto'
-alias ll='ls -ltr'
-alias la='ls -altr'
+if (( $+commands[gls] )); then
+  alias ls='gls --color=auto --group-directories-first'
+else
+  alias ls='ls -G'
+fi
+alias ll='ls -ltrh'
+alias la='ls -altrh'
 alias grep='grep --color=auto'
-alias egrep='egrep --color=auto'
-alias fgrep='fgrep --color=auto'
+alias egrep='grep -E --color=auto'
+alias fgrep='grep -F --color=auto'
 alias rm='rm -i'
 alias mv='mv -i'
 alias cp='cp -i'
-alias date='gdate'                              # Install "coreutils" using brew
-alias awk='gawk'                                # Install "gawk" using brew
-alias sed='gsed'                                # Install "gnu-sed" using brew
-alias free='top -l 1 -s 0 | grep PhysMem'       # Simple 'free' command for mac
-function awkprint() { awk "{print \$${1:-1}};"; }
+(( $+commands[gdate] )) && alias date='gdate'  # brew install coreutils
+(( $+commands[gawk] ))  && alias awk='gawk'    # brew install gawk
+(( $+commands[gsed] ))  && alias sed='gsed'    # brew install gnu-sed
+alias free='top -l 1 -s 0 | grep PhysMem'       # Simple 'free' for macOS
+alias path='print -l $path'                     # PATH one entry per line
+awkprint() { awk "{print \$${1:-1}}"; }
 
 # Network aliases
-alias ping='ping -c5 -n -i 0.4'
-alias wanip='curl -s https://ipinfo.io/ip/ | xargs'
-alias lanip='ipconfig getifaddr en0'
+alias ping='ping -c5 -n'                                   # Quick 5-packet ping
+alias wanip='curl -s https://ipinfo.io/ip'               # Public IP
+alias wanloc='curl -s https://ipinfo.io | jq'            # Public IP with geo/ASN
+alias lanip='ipconfig getifaddr $(route -n get default 2>/dev/null | awk "/interface:/ {print \$2}")'
+alias ips='ifconfig | grep "inet " | grep -v 127.0.0.1'  # All local IPs
+alias dnsflush='sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder'
+alias listen='lsof -iTCP -sTCP:LISTEN -P -n'             # Listening ports
 
 # Login to root with same zsh setting
-alias root='sudo -Es'                           # Carry .zshrc settings to root
-alias sudo='sudo '                              # Carry all aliases to sudo
+alias root='sudo -s ZDOTDIR=$HOME zsh'    # Root shell using your .zshrc
+alias sudo='sudo '                        # Trailing space: expand aliases after sudo
 
 # Weather via command
-alias weather='curl -sk https://wttr.in/Bangalore | ghead -n -2'
+alias weather='_ () { curl -s "https://wttr.in/${1}?F"; }; _'
 
-# VMware aliases
-alias vmup='_ () { vmrun -T fusion start ~/Virtual\ Machines.localized/"$1".vmwarevm/"$1".vmx nogui; }; _'
-alias vmdown='_ () { vmrun -T fusion stop ~/Virtual\ Machines.localized/"$1".vmwarevm/"$1".vmx soft=True; }; _'
-alias vmlist='echo -n "All available VMs: " && ls ~/Virtual\ Machines.localized/ | cut -d"." -f1 | xargs && echo -n "All running VMs: " && vmrun -T fusion list | cut -d"/" -f6 | cut -d"." -f1 | tail -n +2 | xargs'
+# VMware Fusion
+VM_DIR="$HOME/Virtual Machines.localized"
+_vmx() { echo "$VM_DIR/$1.vmwarevm/$1.vmx" }
+alias vmup='_ () { [[ -n $1 ]] || { echo "Usage: vmup <vm-name>"; return 1 }; vmrun -T fusion start "$(_vmx $1)" nogui; }; _'
+alias vmdown='_ () { [[ -n $1 ]] || { echo "Usage: vmdown <vm-name>"; return 1 }; vmrun -T fusion stop "$(_vmx $1)" soft; }; _'
+alias vmkill='_ () { [[ -n $1 ]] || { echo "Usage: vmkill <vm-name>"; return 1 }; vmrun -T fusion stop "$(_vmx $1)" hard; }; _'
+alias vmsusp='_ () { [[ -n $1 ]] || { echo "Usage: vmsusp <vm-name>"; return 1 }; vmrun -T fusion suspend "$(_vmx $1)"; }; _'
+alias vmip='_ () { [[ -n $1 ]] || { echo "Usage: vmip <vm-name>"; return 1 }; vmrun -T fusion getGuestIPAddress "$(_vmx $1)" -wait; }; _'
+alias vmlist='echo "Available: $(ls "$VM_DIR" | sed "s/\.vmwarevm$//" | paste -sd" " -)"; echo "Running:   $(vmrun -T fusion list | tail -n +2 | xargs -I{} basename {} .vmx | paste -sd" " -)"'
 
-# Ssh to local VM's
-alias ssh-copy='_ () { ssh-copy-id "root@$1"; }; _'
-alias f0='ssh f0 -l root' #sm local
-alias sm='ssh sm' #sm
+# SSH
+alias ssh-copy='_ () { ssh-copy-id "root@$1"; }; _'  # Copy your key to root@<host>
 
-# Local Valut Login Setup
-alias vl='export VAULT_ADDR="http://<server>:8200" && export VAULT_TOKEN="<token>" && vault status'
+# Local Vault login - for local testing only
+# Set VAULT_ADDR / VAULT_TOKEN in ~/.zshrc.local (never in this file)
+alias vl='export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}" && export VAULT_TOKEN="${VAULT_TOKEN:-}" && vault status'
 
-# Mac upgrade and tyme-sync aliases
+# macOS upgrade and time-sync aliases
 alias mac-upgrade='sudo softwareupdate -a -i --restart'
 alias mac-time-sync='sudo sntp -sS time.apple.com'
 
-# JAVA PATH - Install using (brew install --cask corretto@21)
+## All PATH Settings
+# Java - brew install --cask corretto@21
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-21.jdk/Contents/Home
-export PATH="$JAVA_HOME/bin:$PATH"
+[[ -d $JAVA_HOME ]] && path=($JAVA_HOME/bin $path)
 
-# Finally, set Path for local scripts
-if [ -d "$HOME/.bin" ]; then
-  export PATH="$HOME/.bin:$PATH"
-else
-  mkdir -p $HOME/.bin && export PATH="$HOME/.bin:$PATH"
-fi
+# Python - brew install python
+path=($HOMEBREW_PREFIX/opt/python/libexec/bin $path)
+
+# Go - brew install go
+export GOPATH=$HOME/go
+export GOBIN=$GOPATH/bin
+path=($GOBIN $path)
+
+# Rust - brew install rustup, then: rustup default stable (keg-only, so add it to PATH)
+# rustup/cargo/rustc proxies come from brew; ~/.cargo/bin holds 'cargo install' tools
+export CARGO_HOME=$HOME/.cargo
+export RUSTUP_HOME=$HOME/.rustup
+path=($HOMEBREW_PREFIX/opt/rustup/bin $CARGO_HOME/bin $path)
+
+# Ruby - brew install ruby (left unlinked; gem executables live in gems/<version>/bin)
+path=($HOMEBREW_PREFIX/lib/ruby/gems/*/bin(Nn[-1]) $HOMEBREW_PREFIX/opt/ruby/bin $path)
+
+# Node.js - brew install node (node/npm and global packages live in $HOMEBREW_PREFIX/bin)
+
+# Bun - brew install bun ('bun add -g' tools go to ~/.bun/bin)
+path=($HOME/.bun/bin $path)
+
+# PHP + Composer - brew install composer ('composer global require' tools go to ~/.composer/vendor/bin)
+path=($HOME/.composer/vendor/bin $path)
+
+# Google Cloud SDK components (gke-gcloud-auth-plugin etc.)
+_gcsdk=$HOMEBREW_PREFIX/share/google-cloud-sdk
+[[ -r $_gcsdk/path.zsh.inc ]] && source $_gcsdk/path.zsh.inc
+
+# Local scripts
+[[ -d $HOME/.bin ]] || mkdir -p $HOME/.bin
+path=($HOME/.bin $HOME/.local/bin $path)
+
+# Machine-specific settings and secrets - not tracked in git (see zsh/zshrc.local.example)
+[[ -r $HOME/.zshrc.local ]] && source $HOME/.zshrc.local
 
 #########################################################################################
 ############## All useful ZSH plugins. Do not add anything below this line ##############
 #########################################################################################
-# Some must have plugins - zsh-completions, zsh-syntax-highlightin, zsh-autosuggestions and zsh-history-substring-search. Install them using brew.
+##########################################################################################
+# Completions
+# az (azure-cli) and other brew-installed tools add theirs to site-functions
+# Plugins via brew: zsh-completions zsh-syntax-highlighting zsh-autosuggestions zsh-history-substring-search
 
-# To make docker completions available in zsh
-mkdir -p $HOME/.docker/completions
-docker completion zsh > $HOME/.docker/completions/_docker
-echo $FPATH | grep --quiet $HOME/.docker/completions
-if [ $? -ne 0 ]; then
-  FPATH="$HOME/.docker/completions:$FPATH"
-  autoload -Uz compinit
-  compinit
-fi
+ZCOMP_DIR=$HOME/.zsh/completions
+[[ -d $ZCOMP_DIR ]] || mkdir -p $ZCOMP_DIR
 
-# To make kubectl completions available in zsh
-mkdir -p $HOME/.kubectl/completions
-kubectl completion zsh > $HOME/.kubectl/completions/_kubectl
-echo $FPATH | grep --quiet $HOME/.kubectl/completions
-if [ $? -ne 0 ]; then
-  FPATH="$HOME/.kubectl/completions:${FPATH}"
-  autoload -Uz compinit
-  compinit
-fi
+# Generate a completion file only when the binary is newer than the cached copy
+_comp() {  # _comp <_file> <cmd> [args...]
+  local file=$ZCOMP_DIR/$1 cmd=$2; shift 2
+  (( $+commands[$cmd] )) || return
+  [[ -s $file && $file -nt $commands[$cmd] ]] && return
+  "$cmd" "$@" > $file 2>/dev/null || rm -f $file
+}
 
-# To make Homebrew’s completions available in zsh.
-echo $FPATH | grep --quiet $(brew --prefix)/share/zsh-completions
-if [ $? -ne 0 ]; then
-  FPATH=$(brew --prefix)/share/zsh-completions:$FPATH
-  autoload -Uz compinit
-  compinit
-fi
+_comp _docker    docker    completion zsh
+_comp _kubectl   kubectl   completion zsh
+_comp _kind      kind      completion zsh
+_comp _minikube  minikube  completion zsh
+_comp _helm      helm      completion zsh
+_comp _gh        gh        completion -s zsh
+_comp _rustup    rustup    completions zsh
+_comp _cargo     rustup    completions zsh cargo
+unfunction _comp
 
-# Speed up zsh compinit by only checking cache once a day
-if type brew &>/dev/null; then
-  autoload -Uz compinit
-  for dump in ~/.zcompdump(N.mh+24); do
-    compinit
-  done
+fpath=($ZCOMP_DIR $fpath)
+
+# Homebrew's completions
+[[ -d $HOMEBREW_PREFIX/share/zsh-completions ]]    && fpath=($HOMEBREW_PREFIX/share/zsh-completions $fpath)
+[[ -d $HOMEBREW_PREFIX/share/zsh/site-functions ]] && fpath=($HOMEBREW_PREFIX/share/zsh/site-functions $fpath)
+
+# compinit once - full security check at most once a day, cached otherwise
+# (plain glob: the (#q) form inside [[ ]] needs EXTENDED_GLOB and would always be true)
+autoload -Uz compinit
+_zdump=${ZDOTDIR:-$HOME}/.zcompdump
+_stale=($_zdump(N.mh+24))
+if [[ ! -s $_zdump ]] || (( $#_stale )); then
+  compinit && touch $_zdump
+else
   compinit -C
 fi
+unset _zdump _stale
 
-# Bash completions 'bashcompinit' in Zsh - It must be called after 'compinit'
-autoload -U +X bashcompinit && bashcompinit
+# Bash-style completions (must follow compinit)
+autoload -Uz +X bashcompinit && bashcompinit
+(( $+commands[aws_completer] )) && complete -C aws_completer aws
+(( $+commands[terraform] ))     && complete -o nospace -C terraform terraform
+[[ -r $_gcsdk/completion.zsh.inc ]] && source $_gcsdk/completion.zsh.inc
+unset _gcsdk
 
-# To make aws completions available in zsh
-complete -C '/opt/homebrew/bin/aws_completer' aws
-
-# Enable zsh syntax highlight
-source $HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-
-# Enable zsh autosuggestions
-source $HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-
-# History search feature, where you can type in any part of any command from history and then press chosen keys, such as the UP and DOWN arrows, to cycle through
-source $HOMEBREW_PREFIX/share/zsh-history-substring-search/zsh-history-substring-search.zsh
+# Plugins - syntax highlighting must be sourced near-last
+for _p in zsh-autosuggestions zsh-syntax-highlighting zsh-history-substring-search; do
+  [[ -r $HOMEBREW_PREFIX/share/$_p/$_p.zsh ]] && source $HOMEBREW_PREFIX/share/$_p/$_p.zsh
+done
+unset _p
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 #########################################################################################
 
-# For profiling unhash bellow. Note: Also unhass first line at the top
-#zprof				# bottom of .zshrc
+# Startup profiling - see the top of this file
+# if-form (not &&) so the last status is 0 and `zsh -i -c exit` succeeds (hyperfine, scripts)
+if [[ -n $ZSH_PROFILE ]]; then zprof; fi
